@@ -6,37 +6,28 @@ import json
 import os
 import logging
 
-# Enable intents (important for member join event)
 intents = discord.Intents.all()
-
-# Initialize bot with intents
 bot = commands.Bot(intents=intents, command_prefix=">")
 
-# Event to print when bot is running
 @bot.event
 async def on_ready():
     print(f'Logged on as {bot.user}')
     await bot.tree.sync()
 
-# File to store welcome channel data
 WELCOME_DATA_FILE = "welcomedat.json"
 
-# Load welcome channels from file
 def load_welcome_channels():
     if os.path.exists(WELCOME_DATA_FILE):
         with open(WELCOME_DATA_FILE, "r") as file:
             return json.load(file)
     return {}
 
-# Save welcome channels to file
 def save_welcome_channels():
     with open(WELCOME_DATA_FILE, "w") as file:
         json.dump(welcome_channels, file, indent=4)
 
-# Load the welcome channels on startup
 welcome_channels = load_welcome_channels()
 
-# Define an owner-only check
 def is_owner():
     async def predicate(interaction: discord.Interaction):
         return interaction.user.id == bot.owner_id
@@ -62,13 +53,12 @@ async def banuser(interaction: discord.Interaction, user_id: int):
     else:
         await interaction.response.send_message("User not found.", ephemeral=True)
 
-# Custom error handler for owner-only commands
 @bot.event
 async def on_application_command_error(interaction: discord.Interaction, error):
     if isinstance(error, commands.CheckFailure):
         await interaction.response.send_message(":x:", ephemeral=True)
     else:
-        raise error  # Re-raise other errors to let them be handled by default
+        raise error
 
 @bot.tree.command(description="Kick a member from the server")
 async def kick(interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided"):
@@ -114,10 +104,8 @@ async def rules(interaction: discord.Interaction):
     )
     await interaction.response.send_message(rules_text)
 
-# changed echo cmd
 @bot.tree.command(description="Echo a message")
 async def echo(interaction: discord.Interaction, text: str):
-    # check if the message contains any mentions
     if ("@everyone" in text or "@here" in text or "<@" in text) and interaction.user.id != bot.owner_id:
         await interaction.response.send_message("You are not allowed to use pings in this command.", ephemeral=True)
     else:
@@ -184,7 +172,6 @@ async def is_bro_lying(interaction: discord.Interaction):
     choice = random.choice(choices)
     await interaction.response.send_message(choice)
 
-# Command to set the welcome channel
 @bot.tree.command(description="Set the welcome channel for the server")
 async def set_welcome_channel(interaction: discord.Interaction, channel: discord.TextChannel):
     if interaction.user.guild_permissions.manage_guild:
@@ -194,7 +181,6 @@ async def set_welcome_channel(interaction: discord.Interaction, channel: discord
     else:
         await interaction.response.send_message(":x: You don't have permission to set the welcome channel.")
 
-# Event to send a welcome message when a member joins
 @bot.event
 async def on_member_join(member: discord.Member):
     print(f"Member joined: {member.name} in guild {member.guild.name}")
@@ -210,5 +196,4 @@ async def on_member_join(member: discord.Member):
     else:
         print(f"No welcome channel set for guild {member.guild.name}")
 
-# Replace your token with the bot token
 bot.run("YOUR_TOKEN_GOES_HERE")
