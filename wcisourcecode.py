@@ -1,5 +1,5 @@
-import nextcord
-from nextcord.ext import commands
+import discord
+from discord.ext import commands
 from datetime import datetime
 import random
 import json
@@ -7,18 +7,19 @@ import os
 import logging
 
 # Enable intents (important for member join event)
-intents = nextcord.Intents.default()
+intents = discord.Intents.default()
 intents.guilds = True  # Enable guild events
 intents.members = True  # Enable member events
 intents.message_content = True  # Enable message content intent for prefix commands
 
 # Initialize bot with intents
-bot = commands.Bot(intents=intents)
+bot = commands.Bot(intents=intents, command_prefix=">")
 
 # Event to print when bot is running
 @bot.event
 async def on_ready():
     print(f'Logged on as {bot.user}')
+    await bot.tree.sync()
 
 # File to store welcome channel data
 WELCOME_DATA_FILE = "welcomedat.json"
@@ -40,13 +41,13 @@ welcome_channels = load_welcome_channels()
 
 # Define an owner-only check
 def is_owner():
-    async def predicate(interaction: nextcord.Interaction):
+    async def predicate(interaction: discord.Interaction):
         return interaction.user.id == bot.owner_id
     return commands.check(predicate)
 
-@bot.slash_command(description="Make the bot leave a guild (owner only)")
+@bot.tree.command(description="Make the bot leave a guild (owner only)")
 @commands.is_owner()
-async def leaveguild(interaction: nextcord.Interaction, guild_id: int):
+async def leaveguild(interaction: discord.Interaction, guild_id: int):
     guild = bot.get_guild(guild_id)
     if guild:
         await guild.leave()
@@ -54,9 +55,9 @@ async def leaveguild(interaction: nextcord.Interaction, guild_id: int):
     else:
         await interaction.response.send_message("Guild not found.", ephemeral=True)
 
-@bot.slash_command(description="Ban a user by ID (owner only)")
+@bot.tree.command(description="Ban a user by ID (owner only)")
 @commands.is_owner()
-async def banuser(interaction: nextcord.Interaction, user_id: int):
+async def banuser(interaction: discord.Interaction, user_id: int):
     user = await bot.fetch_user(user_id)
     if user:
         await interaction.guild.ban(user, reason="Banned by owner command")
@@ -66,32 +67,32 @@ async def banuser(interaction: nextcord.Interaction, user_id: int):
 
 # Custom error handler for owner-only commands
 @bot.event
-async def on_application_command_error(interaction: nextcord.Interaction, error):
+async def on_application_command_error(interaction: discord.Interaction, error):
     if isinstance(error, commands.CheckFailure):
         await interaction.response.send_message(":x:", ephemeral=True)
     else:
         raise error  # Re-raise other errors to let them be handled by default
 
-@bot.slash_command(description="Kick a member from the server")
-async def kick(interaction: nextcord.Interaction, member: nextcord.Member, reason: str = "No reason provided"):
+@bot.tree.command(description="Kick a member from the server")
+async def kick(interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided"):
     if interaction.user.guild_permissions.kick_members:
         await member.kick(reason=reason)
         await interaction.response.send_message(f"Member {member.mention} has been kicked. Reason: {reason}")
     else:
         await interaction.response.send_message(":x:")
 
-@bot.slash_command(description="Ban a member from the server")
-async def ban(interaction: nextcord.Interaction, member: nextcord.Member, reason: str = "No reason provided"):
+@bot.tree.command(description="Ban a member from the server")
+async def ban(interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided"):
     if interaction.user.guild_permissions.ban_members:
         await member.ban(reason=reason)
         await interaction.response.send_message(f"Member {member.mention} has been banned. Reason: {reason}")
     else:
         await interaction.response.send_message(":x:")
 
-@bot.slash_command(name="timeout", description="Timeouts a user")
-async def timeout(ctx: nextcord.Interaction, member: nextcord.Member, reason: str = "No reason provided"):
+@bot.tree.command(name="timeout", description="Timeouts a user")
+async def timeout(ctx: discord.Interaction, member: discord.Member, reason: str = "No reason provided"):
     if ctx.user.guild_permissions.manage_roles:
-        timeout_role = nextcord.utils.get(ctx.guild.roles, name="timeouted")
+        timeout_role = discord.utils.get(ctx.guild.roles, name="timeouted")
         if timeout_role is None:
             timeout_role = await ctx.guild.create_role(name="timeouted")
             for channel in ctx.guild.channels:
@@ -104,8 +105,8 @@ async def timeout(ctx: nextcord.Interaction, member: nextcord.Member, reason: st
     else:
         await ctx.send(":x:")
 
-@bot.slash_command(description="Display the server rules")
-async def rules(interaction: nextcord.Interaction):
+@bot.tree.command(description="Display the server rules")
+async def rules(interaction: discord.Interaction):
     rules_text = (
         "# Rules 📜\n"
         "- No spamming\n"
@@ -117,45 +118,45 @@ async def rules(interaction: nextcord.Interaction):
     await interaction.response.send_message(rules_text)
 
 # changed echo cmd
-@bot.slash_command(description="Echo a message")
-async def echo(interaction: nextcord.Interaction, text: str):
+@bot.tree.command(description="Echo a message")
+async def echo(interaction: discord.Interaction, text: str):
     # check if the message contains any mentions
     if ("@everyone" in text or "@here" in text or "<@" in text) and interaction.user.id != bot.owner_id:
         await interaction.response.send_message("You are not allowed to use pings in this command.", ephemeral=True)
     else:
         await interaction.response.send_message(
             text,
-            allowed_mentions=nextcord.AllowedMentions(
+            allowed_mentions=discord.AllowedMentions(
                 everyone=False,
                 users=True,
                 roles=True
-            ) if interaction.user.id == bot.owner_id else nextcord.AllowedMentions.none()
+            ) if interaction.user.id == bot.owner_id else discord.AllowedMentions.none()
         )
 
-@bot.slash_command(description="Say hello to the chat")
-async def hello(interaction: nextcord.Interaction):
+@bot.tree.command(description="Say hello to the chat")
+async def hello(interaction: discord.Interaction):
     await interaction.response.send_message("hello chat")
 
-@bot.slash_command(description="Say you'll be right back to the chat")
-async def brb(interaction: nextcord.Interaction):
+@bot.tree.command(description="Say you'll be right back to the chat")
+async def brb(interaction: discord.Interaction):
     await interaction.response.send_message("brb")
 
-@bot.slash_command(description="Say goodbye to the chat")
-async def bye(interaction: nextcord.Interaction):
+@bot.tree.command(description="Say goodbye to the chat")
+async def bye(interaction: discord.Interaction):
     await interaction.response.send_message("bye")
 
-@bot.slash_command(description="Make an announcement in the server")
-async def announce(interaction: nextcord.Interaction, ping: str, channel: nextcord.TextChannel, message: str):
+@bot.tree.command(description="Make an announcement in the server")
+async def announce(interaction: discord.Interaction, ping: str, channel: discord.TextChannel, message: str):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message(":x:", ephemeral=True)
         return
 
     announcement = f"{ping}\n\n{message}"
-    await channel.send(announcement, allowed_mentions=nextcord.AllowedMentions(roles=True, users=True, everyone=True))
+    await channel.send(announcement, allowed_mentions=discord.AllowedMentions(roles=True, users=True, everyone=True))
     await interaction.response.send_message(f"Announcement sent in {channel.mention}.", ephemeral=True)
 
-@bot.slash_command(description="Purge messages in a channel")
-async def purge(interaction: nextcord.Interaction, channel: nextcord.TextChannel, count: int):
+@bot.tree.command(description="Purge messages in a channel")
+async def purge(interaction: discord.Interaction, channel: discord.TextChannel, count: int):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message(":x:", ephemeral=True)
         return
@@ -176,8 +177,8 @@ async def purge(interaction: nextcord.Interaction, channel: nextcord.TextChannel
 
     await interaction.response.send_message(f"Purged {total_deleted} messages in {channel.mention}.")
 
-@bot.slash_command(description="Is bro capping?")
-async def is_bro_lying(interaction: nextcord.Interaction):
+@bot.tree.command(description="Is bro capping?")
+async def is_bro_lying(interaction: discord.Interaction):
     choices = [
         "https://tenor.com/view/cap-phone-call-calling-cap-calling-cap-is-calling-gif-27456793",
         ":x: Bro ain't capping"
@@ -187,8 +188,8 @@ async def is_bro_lying(interaction: nextcord.Interaction):
     await interaction.response.send_message(choice)
 
 # Command to set the welcome channel
-@bot.slash_command(description="Set the welcome channel for the server")
-async def set_welcome_channel(interaction: nextcord.Interaction, channel: nextcord.TextChannel):
+@bot.tree.command(description="Set the welcome channel for the server")
+async def set_welcome_channel(interaction: discord.Interaction, channel: discord.TextChannel):
     if interaction.user.guild_permissions.manage_guild:
         welcome_channels[str(interaction.guild.id)] = channel.id
         save_welcome_channels()
@@ -198,7 +199,7 @@ async def set_welcome_channel(interaction: nextcord.Interaction, channel: nextco
 
 # Event to send a welcome message when a member joins
 @bot.event
-async def on_member_join(member: nextcord.Member):
+async def on_member_join(member: discord.Member):
     print(f"Member joined: {member.name} in guild {member.guild.name}")
 
     welcome_channel_id = welcome_channels.get(str(member.guild.id))
