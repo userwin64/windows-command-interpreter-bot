@@ -7,10 +7,7 @@ import os
 import logging
 
 # Enable intents (important for member join event)
-intents = discord.Intents.default()
-intents.guilds = True  # Enable guild events
-intents.members = True  # Enable member events
-intents.message_content = True  # Enable message content intent for prefix commands
+intents = discord.Intents.all()
 
 # Initialize bot with intents
 bot = commands.Bot(intents=intents, command_prefix=">")
